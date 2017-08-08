@@ -1,0 +1,90 @@
+<?php
+
+/**
+ * Adds new participation link
+ */
+function team_add_participant($delo, $participant, $type)
+{
+	if (team_is_participant($delo, $participant)) {
+		return;
+	}
+
+	$record = [
+		'delo_id' => $delo->delo_id,
+		'participant_id' => $participant->uid,
+		'type' => $type,
+		'added' => time(),
+	];
+
+	return drupal_write_record('delo_team', $record);
+}
+
+
+function team_add_participants($delo, $participants, $type)
+{
+	foreach ($participants as $participant) {
+		team_add_participant($delo, $participant, $type);
+	}
+}
+
+
+function team_remove_participant($delo, $participant)
+{
+	db_delete('delo_team')
+	  ->condition('delo_id', $delo->delo_id)
+	  ->condition('participant_id', $participant->uid)
+	  ->execute();
+}
+
+
+function team_remove_participant_everywhere($participant)
+{
+	db_delete('delo_team')
+	  ->condition('participant_id', $participant->uid)
+	  ->execute();
+}
+
+
+function team_change_type($delo, $participant, $new_type)
+{
+	db_update('delo_team')
+	  ->fields(['type' => $new_type])
+	  ->condition('delo_id', $delo->delo_id)
+	  ->condition('participant_id', $participant->uid)
+	  ->execute();
+}
+
+
+function team_get_participants_for_delo($delo)
+{
+	return db_select('delo_team', 't')
+      ->fields('t', ['participant_id'])
+	  ->condition('delo_id', $delo->delo_id)
+	  ->execute()
+	  ->fetchCol();
+}
+
+
+function team_is_participant($delo, $participant)
+{
+  return in_array($participant->uid, team_get_participants_for_delo($delo));
+}
+
+
+function team_get_delo_of_participant($participant)
+{
+	return db_select('delo_team', 't')
+	  ->fields('t', ['delo_id'])
+	  ->condition('participant_id', $participant->uid)
+	  ->execute()
+	  ->fetchCol();
+}
+
+
+function team_type_list()
+{
+	$terms = taxonomy_get_tree();
+	return [
+		''
+	];
+}

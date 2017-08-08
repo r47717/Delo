@@ -1,0 +1,11 @@
+name = Delo
+description = Main component for Delo system
+package = Delo
+core = 7.x
+
+files[] = delo.block.inc
+files[] = delo.admin.inc
+files[] = delo.forms.inc
+files[] = delo.view.inc
+files[] = test/delo.test
+

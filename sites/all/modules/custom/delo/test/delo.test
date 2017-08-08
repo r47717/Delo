@@ -1,0 +1,139 @@
+<?php
+
+class DeloTestCase extends DrupalWebTestCase
+{
+	public static function getInfo() {
+		return [
+			'name' => 'Delo test cases',
+			'description' => 'Test cases for Delo module',
+			'group' => 'Delo',
+		];
+	}
+
+	public function setUp() {
+		parent::setUp([
+			'entity',
+			'delo',
+		]);
+		ini_set('max_execution_time', 0);
+	}
+
+	function initGlobalUser() {
+		global $user;
+		$user = $this->drupalCreateUser([
+			'access administration pages',
+		]);
+		$this->drupalLogin($user);
+	}
+
+
+	function testDeloCreate() {
+		global $user;
+		$this->initGlobalUser();
+
+		$title = "my simpletest title";
+		$description = "my simpletest description";
+		$record = [
+			'user_id' => $user->uid,
+			'title' => $title,
+			'description' => $description,
+		];
+
+		$delo = delo_create($record);
+		$this->assertTrue(is_object($delo) && !empty($delo));
+
+		$new = delo_load($delo->delo_id);
+		$this->assertTrue(is_array($new) && count($new) == 1);
+		$new = reset($new);
+		$this->assertTrue($delo->delo_id == $new->delo_id);
+		$this->assertTrue($new->title == $title);
+		$this->assertTrue($new->description == $description);
+	}
+
+
+	function testDeloDelete() {
+		global $user;
+		$this->initGlobalUser();
+
+		$title = "my simpletest title";
+		$description = "my simpletest description";
+		$record = [
+			'user_id' => $user->uid,
+			'title' => $title,
+			'description' => $description,
+		];
+
+		$delo = delo_create($record);
+		$this->assertTrue(is_object($delo));
+
+		$new = delo_load($delo->delo_id);
+		$this->assertTrue(is_array($new) && count($new) == 1);
+		$new = reset($new);
+
+		$res = delo_delete($new);
+		$this->assertTrue($res);
+	}
+
+
+	function testDeloCreateChildren() {
+		global $user;
+		$this->initGlobalUser();
+
+		$parent = delo_create([]);
+		$this->assertTrue(is_object($parent));
+
+		$child1 = delo_create([
+			'parent_id' => $parent->delo_id,
+		]);
+		$this->assertTrue(is_object($child1));
+		$this->assertTrue($child1->parent_id == $parent->delo_id);
+
+	}
+
+
+	function testEntityCheck() {
+		$info = entity_get_info('delo');
+		$controller_class = $info['controller class'];
+		$this->assertTrue($controller_class == "EntityAPIController");
+
+		$res = in_array('EntityAPIControllerInterface', class_implements($controller_class));
+		$this->assertTrue($res);
+
+		$controller = entity_get_controller('delo');
+		$this->assertTrue(is_object($controller));
+	}
+
+
+	function testDeloDeleteChildTree() {
+		global $user;
+		$this->initGlobalUser();
+
+		$parent = delo_create([]);
+
+		$child1 = delo_create(['parent_id' => $parent->delo_id]);
+		$child11 = delo_create(['parent_id' => $child1->delo_id]);
+		$child12 = delo_create(['parent_id' => $child1->delo_id]);
+		$child111 = delo_create(['parent_id' => $child11->delo_id]);
+
+		$child2 = delo_create(['parent_id' => $parent->delo_id]);
+		$child21 = delo_create(['parent_id' => $child2->delo_id]);
+		$child22 = delo_create(['parent_id' => $child2->delo_id]);
+		$child211 = delo_create(['parent_id' => $child21->delo_id]);
+
+		$res = delo_delete($parent);
+		$this->assertTrue($res, print_r($res, TRUE));
+
+		$res = delo_load([
+			$child1->delo_id,
+			$child11->delo_id,
+			$child12->delo_id,
+			$child111->delo_id,
+			$child2->delo_id,
+			$child21->delo_id,
+			$child22->delo_id,
+			$child211->delo_id,
+		]);
+		$this->assertTrue(empty($res), "<pre>" . print_r($res, TRUE) . "</pre>");
+	}
+}
+

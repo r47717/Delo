@@ -1,0 +1,4 @@
+name = Solo
+description = SVG library
+package = Solo
+core = 7.x

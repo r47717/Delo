@@ -1,0 +1,4 @@
+name = Delo REST
+description = Delo REST interface
+package = Delo
+core = 7.x

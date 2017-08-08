@@ -1,0 +1,4 @@
+name = Slogans
+description = Slogans for the main page
+package = Delo
+core = 7.x

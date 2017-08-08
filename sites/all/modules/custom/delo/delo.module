@@ -1,0 +1,539 @@
+<?php
+
+module_load_include("inc", "delo", "delo.block");
+module_load_include("inc", "delo", "delo.admin");
+module_load_include("inc", "delo", "delo.forms");
+module_load_include("inc", "delo", "delo.show");
+module_load_include("inc", "delo", "delo.view");
+module_load_include("inc", "delo", "delo.field");
+module_load_include("inc", "delo", "delo.json");
+
+
+/**
+ * Implements hook_libraries_info().
+ */
+function delo_libraries_info()
+{
+  return [
+    'jcanvas' => [
+      'name' => 'jcanvas',
+      'vendor url' => 'http://projects.calebevans.me/jcanvas',
+      'download url' => 'https://raw.github.com/caleb531/jcanvas/master/jcanvas.min.js',
+      'download file url' => 'https://raw.github.com/caleb531/jcanvas/master/jcanvas.min.js',
+      'files' => [
+        'js' => [
+          'jcanvas.min.js',
+        ],
+      ],
+      'version arguments' => [
+        'file' => 'jcanvas.min.js',
+        'pattern' => '/jCanvas v(\d+\.\d+\.\d+)/',
+        'lines' => 2,
+      ],
+    ],
+    'backbone' => [
+      'name' => 'backbone',
+      'vendor url' => 'http://backbonejs.org/',
+      'download url' => 'http://backbonejs.org/',
+      'download file url' => 'http://backbonejs.org/backbone-min.js',
+      'files' => [
+        'js' => [
+          'underscore-min.js',
+          'backbone-min.js',
+        ],
+      ],
+      'version' => '1.3.3',
+    ],
+    'bootstrap' => [
+      'name' => 'bootstrap',
+      'vendor url' => 'http://getbootstrap.com/',
+      'download url' => 'https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js',
+      'download file url' => 'https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js',
+      'files' => [
+        'js' => [
+          'bootstrap.min.js',
+        ],
+        'css' => [
+          'bootstrap.min.css',
+        ],
+      ],
+      'version arguments' => [
+        'file' => 'bootstrap.min.js',
+        'pattern' => '/Bootstrap v(\d+\.\d+\.\d+)/',
+        'lines' => 2,
+      ],
+    ],
+    'moment' => [
+      'name' => 'moment',
+      'vendor url' => 'http://momentjs.com/',
+      'download url' => 'http://momentjs.com/downloads/moment.min.js',
+      'download file url' => 'http://momentjs.com/downloads/moment.min.js',
+      'files' => [
+        'js' => [
+          'moment.min.js',
+        ],
+      ],
+      'version arguments' => [
+        'file' => 'moment.min.js',
+        'pattern' => '/version : (\d+\.\d+\.\d+)/',
+        'lines' => 2,
+      ],
+    ],
+    'chosen' => [
+      'name' => 'chosen',
+      'vendor url' => 'https://harvesthq.github.io/chosen/',
+      'download url' => 'https://github.com/harvesthq/chosen/releases/download/',
+      'download file url' => 'https://github.com/harvesthq/chosen/releases/download/v1.6.1/chosen_v1.6.1.zip',
+      'files' => [
+        'js' => [
+          'chosen.jquery.min.js',
+        ],
+        'css' => [
+          'chosen.min.css',
+        ],
+      ],
+      'version arguments' => [
+        'file' => 'chosen.jquery.js',
+        'pattern' => '/Version (\d+\.\d+\.\d+)/',
+        'lines' => 5,
+      ],
+    ],
+    'svg' => [
+      'name' => 'svg',
+      'vendor url' => 'http://svgjs.com/',
+      'download url' => 'https://raw.github.com/wout/svg.js/master/dist/svg.min.js',
+      'download file url' => 'https://raw.github.com/wout/svg.js/master/dist/svg.min.js',
+      'files' => [
+        'js' => [
+          'svg.min.js',
+        ],
+      ],
+      'version arguments' => [
+        'file' => 'svg.js',
+        'pattern' => '/version (\d+\.\d+\.\d+)/',
+        'lines' => 3,
+      ],
+    ],
+  ];
+}
+
+
+/**
+ * implements hook_init().
+ */
+function delo_init()
+{
+  libraries_load('jcanvas');
+  libraries_load('backbone');
+
+  if (!path_is_admin(current_path())) {
+    //
+    libraries_load('bootstrap');
+  }
+
+  libraries_load('moment');
+  libraries_load('chosen');
+  libraries_load('svg');
+}
+
+/************** Entity class ****************/
+
+class DeloEntity extends Entity
+{
+
+  public function addParticipant($user) {
+    return team_add_participant($this, $user);
+  }
+
+  public function removePartucipant($user) {
+    team_remove_participant($this, $user);
+  }
+
+  public function changeParticipantType($user, $new_type) {
+    team_change_type($this, $user, $new_type);
+  }
+
+  public function getParticipants() {
+    return team_get_participants_for_delo($this);
+  }
+
+  public function isParticipant($user) {
+    return team_is_participant($user);
+  }
+
+}
+
+
+/*
+ * Implements hook_entity_info
+ */
+function delo_entity_info() 
+{
+  return array(
+    'delo' => array(
+      'label' => t('Delo'),
+      'base table' => 'delo',
+      'entity keys' => array(
+        'id' => 'delo_id',
+      ),
+      'fieldable' => true,
+      'controller class' => 'EntityAPIController',
+      'entity class' => 'DeloEntity',
+    ),
+  );
+}
+
+
+/*
+ * Implements hook_menu
+ */
+function delo_menu()
+{
+  $items['delo/show'] = [
+    'page callback' => 'delo_show_items',
+    'page arguments' => [],
+    'access arguments' => ['access content'],
+    'type' => MENU_CALLBACK,
+  ];
+
+  $items['delo/show/%'] = [
+    'page callback' => 'delo_show_item',
+    'page arguments' => [2],
+    'access arguments' => ['access content'],
+    'type' => MENU_CALLBACK,
+  ];
+
+  $items['delo/show/%delo/%page/%task'] = [
+    'page callback' => 'delo_show_item',
+    'page arguments' => [2, 3, 4],
+    'access arguments' => ['access content'],
+    'type' => MENU_CALLBACK,
+  ];
+
+  $items['delo/new'] = [
+    'page callback' => 'drupal_get_form',
+    'page arguments' => ['delo_create_form'],
+    'access arguments' => ['access content'],
+    'type' => MENU_CALLBACK,
+  ];
+
+  $items['delo/delete/%'] = [
+    'page callback' => 'drupal_get_form',
+    'page arguments' => ['delo_delete_form', 2],
+    'access arguments' => ['access content'],
+    'type' => MENU_CALLBACK,
+  ];
+
+  $items['delo/put-on-shelf/%'] = [
+    'page callback' => 'delo_put_on_shelf',
+    'page arguments' => [2],
+    'access arguments' => ['access content'],
+    'type' => MENU_CALLBACK,
+  ];
+
+  $items['delo/put-on-shelf-all'] = [
+    'page callback' => 'delo_put_on_shelf_all',
+    'page arguments' => [],
+    'access arguments' => ['access content'],
+    'type' => MENU_CALLBACK,
+  ];
+
+  $items['delo/take-from-shelf/%'] = [
+    'page callback' => 'delo_take_from_shelf',
+    'page arguments' => [2],
+    'access arguments' => ['access content'],
+    'type' => MENU_CALLBACK,
+  ];
+
+  $items['delo-get-tasks/%'] = [
+    'page callback' => 'delo_get_tasks',
+    'page arguments' => [1],
+    'access arguments' => ['access content'],
+    'type' => MENU_CALLBACK,
+  ];
+
+  $items['link'] = [
+    'page callback' => 'delo_ajax_link',
+    'delivery callback' => 'ajax_deliver',
+    'access arguments' => ['access content'],
+  ];
+
+  return $items;
+}
+
+function delo_ajax_link()
+{
+  $commands[] = ajax_command_alert('click!');
+
+  return [
+    '#type' => 'ajax',
+    '#commands' => $commands,
+  ];
+}
+
+/************** Theming ****************/
+
+/*
+function delo_theme()
+{
+  return [
+    'delo_entity' => [
+      'variables' => ['element' => null],
+      'template' => 'delo_entity_template',
+    ],
+
+  ];
+}
+
+*/
+
+
+/************** Entity CRUD functions ****************/
+
+function delo_create($record)
+{
+  global $user;
+
+  if (!user_is_logged_in()) {
+    return null;
+  }
+
+  $values = [];
+
+  if ($user) {
+    $values['user_id'] = $user->uid;
+    $values['parent_id'] = null;
+    $values['title'] = t("Новое дело");
+    $values['description'] = t("Для этого дела нет еще описания");
+    $values['created'] = time();
+    $values['updated'] = $values['created'];
+    $values['closed'] = 0;
+    $values['data'] = null;
+  }
+
+  $record += $values;
+  $delo = entity_create('delo', $record);
+  delo_status_set_default($delo);
+  entity_save('delo', $delo);
+
+  return $delo;
+}
+
+
+/*
+ * Returns list of objects or an object for current user
+ */
+function delo_load($ids = false, $conditions = [])
+{
+  global $user;
+
+  if (!user_is_logged_in()) {
+    return [];
+  }
+
+  $conditions += ['user_id' => $user->uid];
+
+  if (is_numeric($ids)) {
+    $ids = [$ids];
+  }
+
+  $result = entity_load('delo', $ids, $conditions); 
+
+  return $result;
+}
+
+
+function delo_load_main()
+{
+  global $user;
+
+  if (!user_is_logged_in()) {
+    return [];
+  }
+
+  return delo_load(false, [
+    'parent_id' => null,
+    'user_id' => $user->uid,
+  ]);
+}
+
+
+function delo_update($delo)
+{
+  if (is_array($delo)) {
+    $delo = (object) $delo;
+  }
+
+  return entity_save('delo', $delo);
+}
+
+function delo_delete($delo)
+{
+  if (empty($delo)) {
+    return;
+  }
+
+  if (is_array($delo)) {
+    $delo = (object) $delo;
+  } elseif (is_numeric($delo)) {
+    $delo = delo_load($delo);
+    $delo = reset($delo);
+  }
+
+  $children = delo_get_children($delo);
+
+  foreach ($children as $child) {
+    if (!delo_delete($child)) {
+      return FALSE;
+    }
+  }
+
+  $res = entity_delete('delo', $delo->delo_id);
+    return $res === FALSE ? FALSE : TRUE;
+}
+
+
+function delo_url($delo)
+{
+  return "/delo/show/" . $delo->delo_id;
+}
+
+
+/************** Children functions ****************/
+
+function delo_add_children($parent, $children)
+{
+  if (is_object($children)) {
+    $children = [$children];
+  }
+
+  foreach ($children as $child) {
+    $child->parent_id = $parent->delo_id;
+    delo_update($child);
+  }
+}
+
+
+function delo_get_children($parent)
+{
+  global $user;
+
+  return delo_load(false, [
+    'parent_id' => $parent->delo_id,
+  ]);
+}
+
+
+/*********** MENU response functions ************/
+
+function delo_show_items()
+{
+  if (!user_is_logged_in()) {
+    return "<p>" . l("Войдите", "/user/login") . " и займитесь своими делами.<p>";
+  }
+
+  $items = delo_load_main();
+
+  if (empty($items)) {
+    $html = "<p>" . t("У вас нет ни одного дела") . "</p>";
+    $html .= "<p>" . l(t("Создать дело"), "delo/new") . "</p>";
+    return $html;
+  }
+
+  if (isset($_SESSION['shelf'])) {
+    foreach ($items as $key => $item) {
+      if (in_array($item->delo_id, $_SESSION['shelf'])) {
+        unset($items[$key]);
+      }
+    }
+  }
+
+  if (empty($items)) {
+    $html = "<p>" . t("Все дела на полке или в архиве") . "</p>";
+    return $html;
+  }
+
+
+  return delo_view($items);
+}
+
+
+function delo_show_item($delo_id, $page = null, $task = null)
+{
+  if (!user_is_logged_in()) {
+    return "<p>" . l("Войдите", "/user/login") . " и займитесь своими делами.<p>";
+  }
+
+  if (!$delo_id || !is_numeric($delo_id)) {
+    drupal_goto('404');
+    exit();
+  }
+
+  $delo = delo_load($delo_id);
+
+  if (empty($delo)) {
+    drupal_not_found();
+    return;
+  }
+
+  $delo = reset($delo);
+
+  watchdog('delo', print_r($delo, true));
+
+  return delo_view_single($delo, $page, $task);
+}
+
+
+/*-------- Delo on shelf functions --------*/
+
+
+function delo_put_on_shelf($delo_id)
+{
+  if (!user_is_logged_in()) {
+    return "<p>" . l("Войдите", "/user/login") . " и займитесь своими делами.<p>";
+  }
+
+  if (!isset($_SESSION['shelf'])) {
+    $_SESSION['shelf'] = [$delo_id];
+  } elseif (!in_array($delo_id, $_SESSION['shelf'])) {
+    $_SESSION['shelf'][] = $delo_id;
+  }
+
+  drupal_goto("/");
+}
+
+
+function delo_put_on_shelf_all()
+{
+  if (!user_is_logged_in()) {
+    return "<p>" . l("Войдите", "/user/login") . " и займитесь своими делами.<p>";
+  }
+
+  $delo = delo_load_main();
+  $_SESSION['shelf'] = array_keys($delo);
+
+  drupal_goto("/");
+}
+
+
+function delo_take_from_shelf($delo_id)
+{
+  if (isset($_SESSION['shelf'])) {
+    $item = array_search($delo_id, $_SESSION['shelf']);
+    if ($item !== FALSE) {
+      unset($_SESSION['shelf'][$item]);
+    }
+  }
+
+  drupal_goto("/delo/show/" . $delo_id);
+}
+
+
+function delo_clean_shelf()
+{
+  unset($_SESSION['shelf']);
+
+  drupal_goto("/");
+}
+
+

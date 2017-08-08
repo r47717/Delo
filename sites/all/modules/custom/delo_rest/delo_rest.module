@@ -1,0 +1,181 @@
+<?php
+
+
+/**
+ * Implements hook_menu().
+ */
+function delo_rest_menu()
+{
+	$items['rest/delo'] = [
+	  'page callback' => 'delo_rest_all',
+	  'page arguments' => [],
+	  'access arguments' => ['access content'],
+	  'type' => MENU_CALLBACK,
+	];
+
+	$items['rest/delo/%'] = [
+	  'page callback' => 'delo_rest_item',
+	  'page arguments' => [2],
+	  'access arguments' => ['access content'],
+	  'type' => MENU_CALLBACK,
+	];
+
+	$items['rest/delo/children/%'] = [
+	  'page callback' => 'delo_rest_children',
+	  'page arguments' => [3],
+	  'access arguments' => ['access content'],
+	  'type' => MENU_CALLBACK,
+	];
+
+	$items['rest/delo/status/list'] = [
+	  'page callback' => 'delo_rest_status_list',
+	  'page arguments' => [],
+	  'access arguments' => ['access content'],
+	  'type' => MENU_CALLBACK,
+	];
+	$items['rest/delo/shelf'] = [
+	  'page callback' => 'delo_rest_shelf',
+	  'page arguments' => [],
+	  'access arguments' => ['access content'],
+	  'type' => MENU_CALLBACK,
+	];
+
+
+	return $items;
+}
+
+
+function my_get_request_method()
+{
+	return $_SERVER['REQUEST_METHOD'];
+}
+
+
+function my_parse_params($data)
+{
+	$result = [];
+	$arr = explode('&', $data);
+	foreach ($arr as $item) {
+		list($name, $value) = explode('=', $item);
+		$result[$name] = $value;
+	}
+
+	return $result;
+}
+
+
+function delo_rest_all()
+{
+	$method = my_get_request_method();
+	$output = [];
+
+	switch ($method) {
+
+	  case 'GET': // return all items
+	  	$delo = delo_load();
+	  	$output = array_values($delo);
+		break;
+
+	  case 'POST': // add new item
+	  	$data = file_get_contents("php://input");
+	  	$parse = json_decode($data);
+	  	$output = delo_create((array) $parse);
+	    break;
+
+	  default:
+	  	$output = "unsupported method";
+	}
+
+
+	drupal_json_output($output);
+}
+
+
+function delo_rest_item($delo_id)
+{
+	$method = my_get_request_method();
+
+	$data = file_get_contents("php://input");
+
+	switch ($method) {
+
+		case 'GET': // get resource
+
+			$delo = delo_load([$delo_id]);
+			$delo = reset($delo);
+			if ($delo === false) {
+				$delo = "";
+			}
+			drupal_json_output($delo);
+			break;
+
+		case 'PUT': // update resource
+
+			$delo = delo_load([$delo_id]);
+			$delo = reset($delo);
+
+			if (!empty($delo)) {
+				$parse = json_decode($data);
+				$delo->title = isset($parse->title) ? $parse->title : 'unknown title';
+				$delo->description = isset($parse->description) ? $parse->description : 'unknown description';
+				if (isset($parse->field_delo_status)) {
+					watchdog('status', print_r($parse->field_delo_status, true));
+					$delo->field_delo_status['und']['0']['tid'] = $parse->field_delo_status->und['0']->tid;
+				}
+				$delo = delo_update($delo);
+				
+			} else {
+				$delo = "cannot find delo";
+			}
+			
+			drupal_json_output($delo);
+			break;
+
+		case 'DELETE': // delete resource
+			$delo = delo_load([$delo_id]);
+			if (!empty($delo)) {
+				delo_delete($delo_id);
+			}
+			break;
+	}
+}
+
+
+function delo_rest_children($delo_id)
+{
+	$delo = delo_load([$delo_id]);
+	if ($delo) {
+		$output = delo_get_children($delo);
+	} else {
+		$output = "cannot find delo #" . $delo_id;
+	}
+	drupal_json_output($output);
+}
+
+
+function delo_rest_status_list()
+{
+  $status_list = delo_status_get_name_list();
+
+  drupal_json_output($status_list);
+}
+
+function delo_rest_shelf()
+{
+	$delo_on_shelf = $_SESSION['shelf'];
+	
+	if (empty($delo_on_shelf)) {
+		$items = [];
+	} else {
+		foreach ($delo_on_shelf as $delo_id) {
+			$delo = delo_load([$delo_id]);
+			if (empty($delo)) {
+				continue;
+			}
+			$delo = reset($delo);
+			$items[] = $delo;
+		}
+	}
+
+	drupal_json_output($items);
+}

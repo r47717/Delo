@@ -1,0 +1,25 @@
+name = r47717
+description = Тема для сайта Умелое дело
+package = Delo
+version = VERSION
+core = 7.x
+
+stylesheets[all][] = css/main.css
+scripts[] = js/min/main.min.js
+
+regions[page_top] = Page top
+regions[page_bottom] = Page bottom
+regions[header] = Заголовок
+regions[help] = Help
+regions[content] = Содержание
+regions[sidebar] = Левый сайдбар
+regions[footer] = Футер
+regions[footer1] = Футер левый
+regions[footer2] = Футер средний
+regions[footer3] = Футер правый
+
+; Information added by Drupal.org packaging script on 2016-07-07
+version = "7.50"
+project = "drupal"
+datestamp = "1467918493"
+

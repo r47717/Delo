@@ -1,0 +1,18 @@
+{
+  "name": "delo",
+  "version": "1.0.0",
+  "description": "js project for Delo",
+  "author": "r47717",
+  "devDependencies": {
+    "email": "^0.2.6",
+    "grunt": "~0.4.0",
+    "grunt-contrib-clean": "^1.0.0",
+    "grunt-contrib-coffee": "~1.0.0",
+    "grunt-contrib-concat": "~1.0.1",
+    "grunt-contrib-less": "^1.4.0",
+    "grunt-contrib-sass": "~1.0.0",
+    "grunt-contrib-uglify": "~2.0.0",
+    "grunt-contrib-watch": "^1.0.0",
+    "grunt-ssh": "~0.12.9"
+  }
+}

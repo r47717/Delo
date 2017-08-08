@@ -1,0 +1,4 @@
+name = Team
+description = Team management for Delo system
+package = Delo
+core = 7.x

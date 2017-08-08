@@ -1,0 +1,270 @@
+<?php
+
+
+/*
+ * Implements hook_schema
+ */
+function delo_schema() 
+{
+  $schema = array();
+
+  $schema['delo'] = array(
+    'description' => 'The base table for delo',
+    'fields' => array(
+      'delo_id' => array(
+        'description' => t('The primary identifier for a delo'),
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'user_id' => array(
+        'description' => t('The unique ID of the user this delo belongs to.'),
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+      ),
+      'parent_id' => array(
+        'description' => t('The unique ID of the parent delo.'),
+        'type' => 'int',
+        'not null' => FALSE,
+        'unsigned' => TRUE,
+        'not null' => 0,
+      ),
+      'title' => array(
+        'description' => t('Title of this delo.'),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'description' => array(
+        'description' => t('Description of this delo.'),
+        'type' => 'text',
+        'not null' => FALSE,
+      ),
+      'created' => array(
+        'description' => t('The Unix timestamp when the delo was created.'),
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'updated' => array(
+        'description' => t('The Unix timestamp when the delo was updated.'),
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => 0,
+      ),
+      'closed' => array(
+        'description' => t('The Unix timestamp when the delo was closed.'),
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'data' => array(
+        'description' => t('A serialized array of additional data.'),
+        'type' => 'blob',
+        'not null' => FALSE,
+        'size' => 'big',
+        'serialize' => TRUE,
+      ),
+    ),
+
+    'primary key' => array('delo_id'),
+
+    'foreign keys' => array(
+    	'user_id' => array(
+        'table' => 'user',
+        'columns'=> array('user_id' => 'user_id'),
+      	),
+    	'parent_id' => array(
+        'table' => 'delo',
+        'columns'=> array('parent_id' => 'delo_id'),
+      	),
+    ),
+
+  );
+
+  return $schema;
+}
+
+
+/*
+ * Implement hook_install
+ */
+function delo_install()
+{
+	$vocab = taxonomy_vocabulary_machine_name_load('delo_status_vocab');
+	if (!$vocab) {
+		$delo_status_taxonomy = new stdClass();
+		$delo_status_taxonomy->name = t("Состояние дела");
+		$delo_status_taxonomy->description = t("В каком состоянии находится дело");
+		$delo_status_taxonomy->machine_name = t('delo_status_vocab');
+		taxonomy_vocabulary_save($delo_status_taxonomy);
+
+		$vocab = taxonomy_vocabulary_machine_name_load('delo_status_vocab');
+
+		$term = new stdClass();
+		$term->name = t("Новое дело");
+		$term->description = t("Дело создано, но не начато");
+		$term->vid = $vocab->vid;
+		taxonomy_term_save($term);
+
+		$term = new stdClass();
+		$term->name = t("Выполняется");
+		$term->description = t("Дело выполняется, но не закончено");
+		$term->vid = $vocab->vid;
+		taxonomy_term_save($term);
+
+		$term = new stdClass();
+		$term->name = t("Приостановлено");
+		$term->description = t("Дело приостановлено/отложено, не выполняется и не закончено");
+		$term->vid = $vocab->vid;
+		taxonomy_term_save($term);
+
+		$term = new stdClass();
+		$term->name = t("Выполнено");
+		$term->description = t("Дело полностью выполнено");
+		$term->vid = $vocab->vid;
+		taxonomy_term_save($term);
+
+		$term = new stdClass();
+		$term->name = t("Отменено");
+		$term->description = t("Дело отменено и не будет выполняться");
+		$term->vid = $vocab->vid;
+		taxonomy_term_save($term);
+	}
+}
+
+
+/*
+ * Implements hook_enable
+ */
+function delo_enable() 
+{
+  $field_name = 'field_delo_status';
+  if (is_null(field_info_field($field_name))) {
+    $field = [
+      'field_name' => $field_name,
+      'cardinality' => 1,
+      'type' => 'taxonomy_term_reference',
+      'label' => t('Статус'),
+      'settings' => [
+        'allowed_values' => [[
+          'vocabulary' => 'delo_status_vocab',
+          'parent' => 0,
+        ]]
+      ],
+    ];
+    field_create_field($field);
+
+    $instance = [
+      'field_name' => $field_name,
+      'entity_type' => 'delo',
+      'bundle' => 'delo',
+      'required' => true,
+      'widget' => [
+        'type' => 'options_select',
+      ],
+    ];
+    field_create_instance($instance);
+  }
+
+  /* --- */
+  
+  $field_name = 'field_delo_progress';
+  if (is_null(field_info_field($field_name))) {
+    $field = [
+      'field_name' => $field_name,
+      'cardinality' => 1,
+      'type' => 'number_integer',
+      'label' => t('Прогресс выполнения дела'),
+      'default_value' => 0,
+    ];
+    field_create_field($field);
+
+    $instance = [
+      'field_name' => $field_name,
+      'entity_type' => 'delo',
+      'bundle' => 'delo',
+      'required' => true,
+    ];
+    field_create_instance($instance);
+  }
+
+  /* --- */
+  
+  $field_name = "field_delo_priority";
+  if (is_null(field_info_field($field_name))) {
+    $field = [
+      'field_name' => $field_name,
+      'cardinality' => 1,
+      'type' => 'number_integer',
+      'label' => t('Приоритет выполнения дела'),
+      'default_value' => 1,
+    ];
+    field_create_field($field);
+
+    $instance = [
+      'field_name' => $field_name,
+      'entity_type' => 'delo',
+      'bundle' => 'delo',
+      'required' => true,
+    ];
+    field_create_instance($instance);
+  }
+
+  /* --- */
+  
+  $field_name = "field_delo_estimate";
+  if (is_null(field_info_field($field_name))) {
+    $field = [
+      'field_name' => $field_name,
+      'cardinality' => 1,
+      'type' => 'text',
+      'label' => t('Оценка трудоёмкости дела'),
+      'default_value' => 0,
+    ];
+    field_create_field($field);
+
+    $instance = [
+      'field_name' => $field_name,
+      'entity_type' => 'delo',
+      'bundle' => 'delo',
+      'required' => true,
+    ];
+    field_create_instance($instance);
+  }
+
+  /* --- */
+  
+  $field_name = "field_delo_assignee";
+  if (is_null(field_info_field($field_name))) {
+    $field = [
+      'field_name' => $field_name,
+      'cardinality' => 1,
+      'type' => 'number_integer',
+      'label' => t('Назначенное лицо'),
+      'default_value' => 0,
+    ];
+    field_create_field($field);
+
+    $instance = [
+      'field_name' => $field_name,
+      'entity_type' => 'delo',
+      'bundle' => 'delo',
+      'required' => false,
+    ];
+    field_create_instance($instance);
+  }
+}
+
+
+/*
+ * Implements hook_uninstall
+ */
+function delo_uninstall()
+{
+	//$vocab = taxonomy_vocabulary_machine_name_load('delo_status_vocab');
+	//if ($vocab) {
+//		taxonomy_vocabulary_delete($vocab);
+	//}
+}

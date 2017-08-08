@@ -1,0 +1,54 @@
+<?php
+
+/**
+ * Implements hook_schema().
+ */
+function team_schema()
+{
+  $schema['delo_team'] = array(
+    'description' => 'Table for delo teams',
+    'fields' => array(
+      'delo_id' => array(
+        'description' => t('Main delo for this participation'),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'participant_id' => array(
+        'description' => t('Participant.'),
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+      ),
+      'type' => array(
+        'description' => t('Type of participation in the team.'),
+        'type' => 'int',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+        'default' => 0,
+      ),
+      'added' => array(
+        'description' => t('The Unix timestamp when this participation was created.'),
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+
+    'primary key' => array('delo_id', 'participant_id'),
+
+    'foreign keys' => array(
+    	'delo_id' => array(
+	      'table' => 'delo',
+	      'columns'=> array('delo_id' => 'delo_id'),
+      	),
+    	'participant_id' => array(
+	      'table' => 'user',
+	      'columns'=> array('participant_id' => 'user_id'),
+      	),
+    ),
+
+  );
+
+  return $schema;
+}
